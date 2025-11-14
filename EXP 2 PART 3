@@ -1,0 +1,100 @@
+import java.io.*;
+import java.util.Scanner;
+
+public class EmployeeManagement {
+
+    private static final String FILE_NAME = "employees.txt";
+
+    public static void main(String[] args) {
+
+        Scanner sc = new Scanner(System.in);
+        int choice;
+
+        while (true) {
+            System.out.println("\n======= Employee Management System =======");
+            System.out.println("1. Add Employee");
+            System.out.println("2. Display All Employees");
+            System.out.println("3. Exit");
+            System.out.print("Enter your choice: ");
+            choice = sc.nextInt();
+            sc.nextLine(); // Clear input buffer
+
+            switch (choice) {
+                case 1:
+                    addEmployee(sc);
+                    break;
+
+                case 2:
+                    displayEmployees();
+                    break;
+
+                case 3:
+                    System.out.println("Exiting... Thank you!");
+                    return;
+
+                default:
+                    System.out.println("Invalid choice! Please try again.");
+            }
+        }
+    }
+
+    //  ADD EMPLOYEE 
+    public static void addEmployee(Scanner sc) {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(FILE_NAME, true))) {
+
+            System.out.print("Enter Employee ID: ");
+            String id = sc.nextLine();
+
+            System.out.print("Enter Employee Name: ");
+            String name = sc.nextLine();
+
+            System.out.print("Enter Designation: ");
+            String designation = sc.nextLine();
+
+            System.out.print("Enter Salary: ");
+            String salary = sc.nextLine();
+
+            // Writing employee data as formatted text
+            bw.write(id + "," + name + "," + designation + "," + salary);
+            bw.newLine();
+
+            System.out.println("Employee added successfully!");
+
+        } catch (IOException e) {
+            System.out.println("Error while saving employee: " + e.getMessage());
+        }
+    }
+
+    // DISPLAY EMPLOYEES 
+    public static void displayEmployees() {
+        try (BufferedReader br = new BufferedReader(new FileReader(FILE_NAME))) {
+
+            String line;
+            boolean found = false;
+
+            System.out.println("\n======= Employee Records =======");
+
+            while ((line = br.readLine()) != null) {
+                found = true;
+
+                // Split values stored as text
+                String[] data = line.split(",");
+
+                System.out.println("ID          : " + data[0]);
+                System.out.println("Name        : " + data[1]);
+                System.out.println("Designation : " + data[2]);
+                System.out.println("Salary      : " + data[3]);
+                System.out.println("-----------------------------------");
+            }
+
+            if (!found) {
+                System.out.println("No employee records found!");
+            }
+
+        } catch (FileNotFoundException e) {
+            System.out.println("No employee data file found! Please add employees first.");
+        } catch (IOException e) {
+            System.out.println("Error while reading employee records: " + e.getMessage());
+        }
+    }
+}
