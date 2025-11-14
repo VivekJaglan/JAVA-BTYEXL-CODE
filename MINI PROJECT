@@ -1,0 +1,489 @@
+PROJECT STRUCTURE
+src/main/java
+│
+├── config
+│     └── AppConfig.java
+│
+├── model
+│     ├── Student.java
+│     ├── Course.java
+│     └── Payment.java
+│
+├── dao
+│     ├── StudentDAO.java
+│     ├── CourseDAO.java
+│     └── PaymentDAO.java
+│
+├── service
+│     ├── StudentService.java
+│     ├── CourseService.java
+│     └── FeeService.java
+│
+└── app
+      └── MainApp.java
+
+🧩 1. ENTITY CLASSES (Hibernate Models)
+✅ Course.java
+package model;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "courses")
+public class Course {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int courseId;
+
+    @Column
+    private String courseName;
+
+    @Column
+    private int duration; // In months
+
+    public Course() {}
+
+    public Course(String courseName, int duration) {
+        this.courseName = courseName;
+        this.duration = duration;
+    }
+
+    // Getters & Setters
+}
+
+✅ Student.java
+package model;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "students")
+public class Student {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int studentId;
+
+    @Column
+    private String name;
+
+    @ManyToOne
+    @JoinColumn(name = "course_id")
+    private Course course;
+
+    @Column
+    private double balance; // Fee balance
+
+    public Student() {}
+
+    public Student(String name, Course course, double balance) {
+        this.name = name;
+        this.course = course;
+        this.balance = balance;
+    }
+
+    // Getters & Setters
+}
+
+✅ Payment.java
+package model;
+
+import jakarta.persistence.*;
+import java.util.Date;
+
+@Entity
+@Table(name = "payments")
+public class Payment {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int paymentId;
+
+    @Column
+    private int studentId;
+
+    @Column
+    private double amount;
+
+    @Column
+    private Date date;
+
+    public Payment() {}
+
+    public Payment(int studentId, double amount, Date date) {
+        this.studentId = studentId;
+        this.amount = amount;
+        this.date = date;
+    }
+
+    // Getters & Setters
+}
+
+🗄 2. DAO LAYER (Hibernate CRUD Logic)
+✅ HibernateUtil.java
+package config;
+
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+
+public class HibernateUtil {
+    private static final SessionFactory factory =
+            new Configuration().configure().buildSessionFactory();
+
+    public static SessionFactory getSessionFactory() {
+        return factory;
+    }
+}
+
+✅ StudentDAO.java
+package dao;
+
+import model.Student;
+import config.HibernateUtil;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+import java.util.List;
+
+public class StudentDAO {
+
+    public void save(Student s) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction tx = session.beginTransaction();
+        session.save(s);
+        tx.commit();
+        session.close();
+    }
+
+    public Student get(int id) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Student s = session.get(Student.class, id);
+        session.close();
+        return s;
+    }
+
+    public List<Student> getAll() {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        List<Student> list = session.createQuery("FROM Student").list();
+        session.close();
+        return list;
+    }
+
+    public void update(Student s) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction tx = session.beginTransaction();
+        session.update(s);
+        tx.commit();
+        session.close();
+    }
+
+    public void delete(int id) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction tx = session.beginTransaction();
+        Student s = session.get(Student.class, id);
+        session.delete(s);
+        tx.commit();
+        session.close();
+    }
+}
+
+✅ CourseDAO.java
+package dao;
+
+import model.Course;
+import config.HibernateUtil;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+import java.util.List;
+
+public class CourseDAO {
+
+    public void save(Course c) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction tx = session.beginTransaction();
+        session.save(c);
+        tx.commit();
+        session.close();
+    }
+
+    public Course get(int id) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Course c = session.get(Course.class, id);
+        session.close();
+        return c;
+    }
+
+    public List<Course> getAll() {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        List<Course> list = session.createQuery("FROM Course").list();
+        session.close();
+        return list;
+    }
+}
+
+✅ PaymentDAO.java
+package dao;
+
+import model.Payment;
+import config.HibernateUtil;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+
+public class PaymentDAO {
+
+    public void save(Payment p) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction tx = session.beginTransaction();
+        session.save(p);
+        tx.commit();
+        session.close();
+    }
+}
+
+🔧 3. SERVICE LAYER (Spring Services + DI)
+✨ StudentService.java
+package service;
+
+import dao.StudentDAO;
+import dao.CourseDAO;
+import model.Student;
+import model.Course;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class StudentService {
+
+    private StudentDAO studentDAO;
+    private CourseDAO courseDAO;
+
+    public StudentService(StudentDAO studentDAO, CourseDAO courseDAO) {
+        this.studentDAO = studentDAO;
+        this.courseDAO = courseDAO;
+    }
+
+    public void addStudent(String name, int courseId, double balance) {
+        Course c = courseDAO.get(courseId);
+        Student s = new Student(name, c, balance);
+        studentDAO.save(s);
+    }
+
+    public List<Student> listStudents() {
+        return studentDAO.getAll();
+    }
+
+    public void updateStudent(Student s) {
+        studentDAO.update(s);
+    }
+
+    public void deleteStudent(int id) {
+        studentDAO.delete(id);
+    }
+}
+
+✨ FeeService.java (Transaction Management)
+package service;
+
+import dao.PaymentDAO;
+import dao.StudentDAO;
+import model.Payment;
+import model.Student;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Date;
+
+@Service
+public class FeeService {
+
+    private StudentDAO studentDAO;
+    private PaymentDAO paymentDAO;
+
+    public FeeService(StudentDAO studentDAO, PaymentDAO paymentDAO) {
+        this.studentDAO = studentDAO;
+        this.paymentDAO = paymentDAO;
+    }
+
+    @Transactional
+    public void payFees(int studentId, double amount) {
+        Student s = studentDAO.get(studentId);
+
+        if (s.getBalance() < amount)
+            throw new RuntimeException("Insufficient Balance!");
+
+        s.setBalance(s.getBalance() - amount);
+        studentDAO.update(s);
+
+        Payment p = new Payment(studentId, amount, new Date());
+        paymentDAO.save(p);
+    }
+
+    @Transactional
+    public void refundFees(int studentId, double amount) {
+        Student s = studentDAO.get(studentId);
+
+        s.setBalance(s.getBalance() + amount);
+        studentDAO.update(s);
+
+        Payment p = new Payment(studentId, -amount, new Date());
+        paymentDAO.save(p);
+    }
+}
+
+⚙️ 4. SPRING CONFIGURATION (Java-Based DI)
+⭐ AppConfig.java
+package config;
+
+import dao.*;
+import service.*;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+@Configuration
+@EnableTransactionManagement
+public class AppConfig {
+
+    @Bean
+    public StudentDAO studentDAO() {
+        return new StudentDAO();
+    }
+
+    @Bean
+    public CourseDAO courseDAO() {
+        return new CourseDAO();
+    }
+
+    @Bean
+    public PaymentDAO paymentDAO() {
+        return new PaymentDAO();
+    }
+
+    @Bean
+    public StudentService studentService() {
+        return new StudentService(studentDAO(), courseDAO());
+    }
+
+    @Bean
+    public FeeService feeService() {
+        return new FeeService(studentDAO(), paymentDAO());
+    }
+}
+
+🖥 5. MAIN APPLICATION (Menu-Driven Console Interface)
+⭐ MainApp.java
+package app;
+
+import config.AppConfig;
+import model.Student;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import service.StudentService;
+import service.FeeService;
+
+import java.util.Scanner;
+
+public class MainApp {
+    public static void main(String[] args) {
+
+        AnnotationConfigApplicationContext ctx =
+                new AnnotationConfigApplicationContext(AppConfig.class);
+
+        StudentService studentService = ctx.getBean(StudentService.class);
+        FeeService feeService = ctx.getBean(FeeService.class);
+
+        Scanner sc = new Scanner(System.in);
+        int choice;
+
+        while (true) {
+            System.out.println("\n===== Online Student Management System =====");
+            System.out.println("1. Add Student");
+            System.out.println("2. View Students");
+            System.out.println("3. Pay Fees");
+            System.out.println("4. Refund Fees");
+            System.out.println("5. Exit");
+            System.out.print("Enter choice: ");
+
+            choice = sc.nextInt();
+
+            switch (choice) {
+                case 1:
+                    System.out.print("Enter Name: ");
+                    sc.nextLine();
+                    String name = sc.nextLine();
+
+                    System.out.print("Enter Course ID: ");
+                    int cid = sc.nextInt();
+
+                    System.out.print("Enter Balance: ");
+                    double bal = sc.nextDouble();
+
+                    studentService.addStudent(name, cid, bal);
+                    System.out.println("Student Added!");
+                    break;
+
+                case 2:
+                    studentService.listStudents().forEach(s ->
+                        System.out.println(s.getStudentId() + " | " +
+                                           s.getName() + " | " +
+                                           s.getCourse().getCourseName() + " | " +
+                                           s.getBalance()));
+                    break;
+
+                case 3:
+                    System.out.print("Student ID: ");
+                    int sid = sc.nextInt();
+                    System.out.print("Amount: ");
+                    double amt = sc.nextDouble();
+                    try {
+                        feeService.payFees(sid, amt);
+                        System.out.println("Payment Successful!");
+                    } catch (Exception e) {
+                        System.out.println("FAILED: " + e.getMessage());
+                    }
+                    break;
+
+                case 4:
+                    System.out.print("Student ID: ");
+                    sid = sc.nextInt();
+                    System.out.print("Amount: ");
+                    amt = sc.nextDouble();
+
+                    feeService.refundFees(sid, amt);
+                    System.out.println("Refund Successful!");
+                    break;
+
+                case 5:
+                    System.out.println("Exiting...");
+                    ctx.close();
+                    return;
+
+                default:
+                    System.out.println("Invalid choice!");
+            }
+        }
+    }
+}
+
+🗃 6. DATABASE TABLES (MySQL)
+CREATE TABLE courses (
+  course_id INT PRIMARY KEY AUTO_INCREMENT,
+  course_name VARCHAR(50),
+  duration INT
+);
+
+CREATE TABLE students (
+  student_id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(50),
+  course_id INT,
+  balance DOUBLE,
+  FOREIGN KEY (course_id) REFERENCES courses(course_id)
+);
+
+CREATE TABLE payments (
+  payment_id INT PRIMARY KEY AUTO_INCREMENT,
+  student_id INT,
+  amount DOUBLE,
+  date DATETIME,
+  FOREIGN KEY (student_id) REFERENCES students(student_id)
+);
