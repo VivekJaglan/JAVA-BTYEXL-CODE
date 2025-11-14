@@ -1,1 +1,401 @@
+Course.java
+public class Course {
+    private String courseName;
 
+    public Course(String courseName) {
+        this.courseName = courseName;
+    }
+
+    public void display() {
+        System.out.println("Enrolled Course: " + courseName);
+    }
+}
+
+2️⃣ Student.java
+public class Student {
+    private Course course;
+
+    // Constructor Injection
+    public Student(Course course) {
+        this.course = course;
+    }
+
+    public void showInfo() {
+        System.out.println("Student object created using Dependency Injection!");
+        course.display();
+    }
+}
+
+3️⃣ SpringConfig.java
+
+(Java-based Spring Configuration)
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class SpringConfig {
+
+    @Bean
+    public Course courseBean() {
+        return new Course("Spring Framework");
+    }
+
+    @Bean
+    public Student studentBean() {
+        return new Student(courseBean());
+    }
+}
+
+4️⃣ MainApp.java
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+public class MainApp {
+    public static void main(String[] args) {
+        AnnotationConfigApplicationContext context =
+                new AnnotationConfigApplicationContext(SpringConfig.class);
+
+        Student student = context.getBean(Student.class);
+        student.showInfo();
+
+        context.close();
+    }
+}
+
+✔ Demonstrates:
+
+Spring DI using Java Config
+
+@Configuration, @Bean
+
+No XML required
+
+Constructor-based DI
+
+✅ PART B — Hibernate Application for Student CRUD Operations
+
+This example uses Hibernate ORM, JPA annotations, and full CRUD.
+
+1️⃣ Student.java (Entity Class)
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "student")
+public class Student {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int id;
+
+    @Column
+    private String name;
+
+    @Column
+    private double marks;
+
+    public Student() {}
+
+    public Student(String name, double marks) {
+        this.name = name;
+        this.marks = marks;
+    }
+
+    // getters and setters
+}
+
+2️⃣ hibernate.cfg.xml
+
+(Placed in src/main/resources)
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD//EN"
+        "http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd">
+<hibernate-configuration>
+    <session-factory>
+
+        <property name="hibernate.dialect">org.hibernate.dialect.MySQLDialect</property>
+        <property name="hibernate.connection.driver_class">com.mysql.cj.jdbc.Driver</property>
+        <property name="hibernate.connection.url">jdbc:mysql://localhost:3306/testdb</property>
+        <property name="hibernate.connection.username">root</property>
+        <property name="hibernate.connection.password"></property>
+
+        <property name="hbm2ddl.auto">update</property>
+        <property name="show_sql">true</property>
+
+        <mapping class="Student"/>
+
+    </session-factory>
+</hibernate-configuration>
+
+3️⃣ HibernateUtil.java
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+
+public class HibernateUtil {
+    private static final SessionFactory sessionFactory =
+            new Configuration().configure().buildSessionFactory();
+
+    public static SessionFactory getSessionFactory() {
+        return sessionFactory;
+    }
+}
+
+4️⃣ StudentDAO.java
+
+(CRUD Operations)
+
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+import java.util.List;
+
+public class StudentDAO {
+
+    public void addStudent(Student s) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction tx = session.beginTransaction();
+
+        session.save(s);
+
+        tx.commit();
+        session.close();
+    }
+
+    public Student getStudent(int id) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Student s = session.get(Student.class, id);
+        session.close();
+        return s;
+    }
+
+    public List<Student> getAllStudents() {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        List<Student> list = session.createQuery("FROM Student").list();
+        session.close();
+        return list;
+    }
+
+    public void updateStudent(Student s) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction tx = session.beginTransaction();
+
+        session.update(s);
+
+        tx.commit();
+        session.close();
+    }
+
+    public void deleteStudent(int id) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction tx = session.beginTransaction();
+
+        Student s = session.get(Student.class, id);
+        session.delete(s);
+
+        tx.commit();
+        session.close();
+    }
+}
+
+5️⃣ MainApp.java (Test Program)
+public class MainApp {
+    public static void main(String[] args) {
+
+        StudentDAO dao = new StudentDAO();
+
+        // CREATE
+        dao.addStudent(new Student("Rohan", 85.5));
+
+        // READ
+        Student s = dao.getStudent(1);
+        System.out.println("Fetched: " + s.getName());
+
+        // UPDATE
+        s.setMarks(90.0);
+        dao.updateStudent(s);
+
+        // DELETE
+        dao.deleteStudent(1);
+
+        // READ ALL
+        dao.getAllStudents().forEach(st ->
+                System.out.println(st.getName() + " - " + st.getMarks()));
+    }
+}
+
+✔ Demonstrates:
+
+Hibernate ORM
+
+CRUD operations
+
+SessionFactory & Transactions
+
+HQL and entity mapping
+
+✅ PART C — Transaction Management Using Spring + Hibernate
+
+This example creates a Banking System where money is transferred between accounts safely using Spring’s @Transactional.
+
+Step 1: Entities
+1️⃣ Account.java
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "account")
+public class Account {
+
+    @Id
+    private int accountId;
+
+    @Column
+    private double balance;
+
+    public Account() {}
+
+    public Account(int accountId, double balance) {
+        this.accountId = accountId;
+        this.balance = balance;
+    }
+
+    // getters and setters
+}
+
+2️⃣ TransactionRecord.java
+import jakarta.persistence.*;
+import java.util.Date;
+
+@Entity
+@Table(name = "transaction")
+public class TransactionRecord {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int txId;
+
+    @Column
+    private int fromAccount;
+
+    @Column
+    private int toAccount;
+
+    @Column
+    private double amount;
+
+    @Column
+    private Date txDate;
+
+    public TransactionRecord() {}
+}
+
+Step 2: DAO Layer
+AccountDAO.java
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+
+public class AccountDAO {
+
+    public Account getAccount(int id) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Account acc = session.get(Account.class, id);
+        session.close();
+        return acc;
+    }
+
+    public void updateAccount(Account acc) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction tx = session.beginTransaction();
+        session.update(acc);
+        tx.commit();
+        session.close();
+    }
+
+    public void saveTransaction(TransactionRecord tr) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction tx = session.beginTransaction();
+        session.save(tr);
+        tx.commit();
+        session.close();
+    }
+}
+
+Step 3: Service Layer with @Transactional
+BankService.java
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.Date;
+
+@Service
+public class BankService {
+
+    private AccountDAO dao = new AccountDAO();
+
+    @Transactional
+    public void transferMoney(int fromAccId, int toAccId, double amount) {
+
+        Account from = dao.getAccount(fromAccId);
+        Account to = dao.getAccount(toAccId);
+
+        if (from.getBalance() < amount) {
+            throw new RuntimeException("Insufficient Balance");
+        }
+
+        // Deduct
+        from.setBalance(from.getBalance() - amount);
+        dao.updateAccount(from);
+
+        // Add
+        to.setBalance(to.getBalance() + amount);
+        dao.updateAccount(to);
+
+        // Save transaction record
+        TransactionRecord tr = new TransactionRecord();
+        tr.setAmount(amount);
+        tr.setFromAccount(fromAccId);
+        tr.setToAccount(toAccId);
+        tr.setTxDate(new Date());
+
+        dao.saveTransaction(tr);
+
+        // All steps occur in ONE transaction
+    }
+}
+
+Step 4: Spring Configuration
+AppConfig.java
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+@Configuration
+@EnableTransactionManagement
+public class AppConfig {
+
+    @Bean
+    public BankService bankService() {
+        return new BankService();
+    }
+}
+
+Step 5: Test Program
+MainApp.java
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+public class MainApp {
+    public static void main(String[] args) {
+
+        AnnotationConfigApplicationContext ctx =
+                new AnnotationConfigApplicationContext(AppConfig.class);
+
+        BankService service = ctx.getBean(BankService.class);
+
+        try {
+            service.transferMoney(1, 2, 500);
+            System.out.println("Transaction Successful!");
+        } catch (Exception e) {
+            System.out.println("Transaction Failed: " + e.getMessage());
+        }
+
+        ctx.close();
+    }
+}
