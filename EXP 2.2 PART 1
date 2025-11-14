@@ -1,0 +1,39 @@
+import java.util.ArrayList;
+import java.util.Scanner;
+
+public class AutoboxingUnboxingExample {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        // Create an ArrayList to store Integer objects
+        ArrayList<Integer> numbers = new ArrayList<>();
+
+        System.out.println("Enter integers (type 'done' to finish):");
+
+        while (true) {
+            String input = sc.nextLine();
+
+            // Stop when user types "done"
+            if (input.equalsIgnoreCase("done")) {
+                break;
+            }
+
+            // Parse string to int, then autobox to Integer
+            try {
+                int value = Integer.parseInt(input);  // String → int
+                numbers.add(value);                   // int → Integer (Autoboxing)
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid input! Please enter a valid integer.");
+            }
+        }
+
+        // Calculate sum using enhanced for-loop (unboxing happens here)
+        int sum = 0;
+        for (Integer num : numbers) {
+            sum += num;    // Integer → int (Unboxing)
+        }
+
+        System.out.println("\nYou entered: " + numbers);
+        System.out.println("Total Sum = " + sum);
+    }
+}
